@@ -17,9 +17,10 @@ local PLACE_ID = tostring(game.PlaceId)
 local LOCAL_USER = Players.LocalPlayer.Name
 local isChatVisible = true
 local isBinding = false
-
--- Распознавание устройства (Проверка наличия тач-скрина/акселерометра)
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+local WS_URL = "wss://socketsbay.com"
+local ws = nil
 
 local function playSound(assetId, volume)
     task.spawn(function()
@@ -103,7 +104,6 @@ local function toggleChat()
     playSound(6891630713, 0.4)
 end
 
--- КНОПКА ДЛЯ ТЕЛЕФОНОВ (Создается и показывается СТРОГО на мобильных устройствах)
 if isMobile then
     local MobileToggleButton = Instance.new("TextButton")
     MobileToggleButton.Name = "MobileToggleButton"
@@ -317,6 +317,34 @@ UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
+if WebSocket then
+    pcall(function()
+        ws = WebSocket(WS_URL)
+        
+        ws.OnMessage:Connect(function(message)
+            local success, data = pcall(function() return HttpService:JSONDecode(message) end)
+            if success and data and data.clanChat then
+                if data.placeId == PLACE_ID then
+                    if data.isPrivate then
+                        if data.target == LOCAL_USER then
+                            addMessage("[ЛС] " .. data.username .. " -> Вам:", data.message, Color3.fromRGB(165, 55, 253))
+                            playSound(1380842870, 0.4)
+                        end
+                    else
+                        if data.username ~= LOCAL_USER then
+                            local asset = data.message:match("rbxassetid://(%d+)")
+                            addMessage(data.username, data.message, nil, asset)
+                            playSound(4561001476, 0.4)
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+else
+    addMessage("System Error:", "Ваш экзекутор не поддерживает WebSockets!", Color3.fromRGB(255, 85, 85))
+end
+
 TextBox.FocusLost:Connect(function(enterPressed)
     if enterPressed and TextBox.Text ~= "" then
         local text = TextBox.Text
@@ -324,15 +352,29 @@ TextBox.FocusLost:Connect(function(enterPressed)
         playSound(4561001476, 0.7) 
         
         local targetPlayer, privateMsg = text:match("^/msg%s+(%S+)%s+(.+)$")
+        
+        local packet = {
+            clanChat = true,
+            username = LOCAL_USER,
+            message = text,
+            placeId = PLACE_ID,
+            isPrivate = false
+        }
+        
         if targetPlayer and privateMsg then
+            packet.message = privateMsg
+            packet.isPrivate = true
+            packet.target = targetPlayer
             addMessage("[ЛС] Вы -> " .. targetPlayer .. ":", privateMsg, Color3.fromRGB(165, 55, 253))
         else
             local asset = text:match("rbxassetid://(%d+)") or text:match("^%d+$")
             if text:match("^%d+$") and #text > 5 then asset = text end
             addMessage(LOCAL_USER, text, nil, asset)
         end
+        
+        if ws then pcall(function() ws:Send(HttpService:JSONEncode(packet)) end) end
     end
 end)
 
 playSound(1380842870, 0.5)
-addMessage("System:", "Chat loaded. Active bind: [" .. string.upper(toggleKey.Name) .. "]", Color3.fromRGB(255, 220, 80))
+addMessage("System:", "Подключено к чату. ПлейсId: " .. PLACE_ID, Color3.fromRGB(255, 220, 80))
