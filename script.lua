@@ -33,6 +33,13 @@ local function playSound(assetId, volume)
     end)
 end
 
+-- Функция перенесена в самый верх, чтобы исправить ошибку nil в Xeno
+local function toggleChat()
+    isChatVisible = not isChatVisible
+    MainFrame.Visible = isChatVisible
+    playSound(6891630713, 0.4)
+end
+
 local SETTINGS_FILE = "chat_bypass_settings.json"
 local toggleKey = Enum.KeyCode.P
 
@@ -97,13 +104,6 @@ local function makeDraggable(frame, restrictToTextBox)
 end
 
 makeDraggable(MainFrame, true)
-
--- Функция перенесена вверх, чтобы не было ошибки nil
-local function toggleChat()
-    isChatVisible = not isChatVisible
-    MainFrame.Visible = isChatVisible
-    playSound(6891630713, 0.4)
-end
 
 if isMobile then
     local MobileToggleButton = Instance.new("TextButton")
@@ -318,16 +318,15 @@ UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Проверка наличия глобальной переменной websocket/websocket.connect
-local wsConnect = (syn and syn.websocket and syn.websocket.connect) or (WebSocket and WebSocket.connect) or (websocket and websocket.connect)
+local WebSocket = (syn and syn.websocket and syn.websocket.connect) or (WebSocket and WebSocket.connect) or (websocket and websocket.connect)
 
-if wsConnect then
-    local success, err = pcall(function()
-        ws = wsConnect(WS_URL)
+if WebSocket then
+    pcall(function()
+        ws = WebSocket(WS_URL)
         
         ws.OnMessage:Connect(function(message)
-            local decodeSuccess, data = pcall(function() return HttpService:JSONDecode(message) end)
-            if decodeSuccess and data and data.clanChat then
+            local success, data = pcall(function() return HttpService:JSONDecode(message) end)
+            if success and data and data.clanChat then
                 if data.placeId == PLACE_ID then
                     if data.isPrivate then
                         if data.target == LOCAL_USER then
@@ -345,9 +344,6 @@ if wsConnect then
             end
         end)
     end)
-    if not success then
-        addMessage("System Error:", "Не удалось подключиться к серверу связи.", Color3.fromRGB(255, 85, 85))
-    end
 else
     addMessage("System Error:", "Ваш экзекутор не поддерживает WebSockets!", Color3.fromRGB(255, 85, 85))
 end
@@ -359,7 +355,6 @@ TextBox.FocusLost:Connect(function(enterPressed)
         playSound(4561001476, 0.7) 
         
         local targetPlayer, privateMsg = text:match("^/msg%s+(%S+)%s+(.+)$")
-        
         local packet = {
             clanChat = true,
             username = LOCAL_USER,
