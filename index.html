@@ -2,9 +2,11 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Roblox Chat Bypass (Protected)</title>
+    <title>Roblox Chat Bypass</title>
 </head>
 <body>
+
+<!-- Экран авторизации (Пароль) -->
 <div id="auth-screen">
     <div class="auth-box">
         <h2>Введите ключ доступа</h2>
@@ -14,6 +16,7 @@
     </div>
 </div>
 
+<!-- Главное окно чата (Изначально скрыто) -->
 <div id="tilda-chat-wrapper" style="display: none;">
     <div id="tilda-chat-log"></div>
     <div id="tilda-chat-input-zone">
@@ -24,21 +27,61 @@
 
 <style>
     body { background-color: #111; padding: 0; margin: 0; font-family: Arial, sans-serif; }
+    
+    /* Стили окна пароля */
     #auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
     .auth-box { background: #222; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: #fff; }
     .auth-box input { background: #111; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 4px; margin-bottom: 15px; width: 80%; font-size: 16px; }
     .auth-box button { background: #555; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     
-    #tilda-chat-wrapper { max-width: 600px; margin: 50px auto; background: rgba(0, 0, 0, 0.85); border-radius: 8px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-    #tilda-chat-log { height: 400px; overflow-y: scroll; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; color: #fff; }
-    .chat-msg { margin: 6px 0; line-height: 1.4; font-weight: bold; word-break: break-all; }
+    /* Стили оригинального чата */
+    #tilda-chat-wrapper {
+        max-width: 500px;
+        margin: 50px auto;
+        background: rgba(0, 0, 0, 0.85);
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    #tilda-chat-log {
+        height: 300px;
+        overflow-y: auto;
+        border-bottom: 1px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        color: #fff;
+    }
+    .chat-msg {
+        margin: 4px 0;
+        line-height: 1.4;
+        font-weight: bold;
+    }
     .msg-system { color: #ffd700; }
     .msg-player { color: #ffffff; }
-    .chat-img { max-width: 200px; max-height: 200px; display: block; margin-top: 5px; border-radius: 4px; }
-    #tilda-chat-input-zone { display: flex; gap: 10px; }
-    #tilda-chat-input { flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid #444; padding: 10px; color: #fff; border-radius: 6px; font-size: 14px; }
-    #tilda-chat-send { background: #ff5555; color: #fff; border: none; padding: 0 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-    #tilda-chat-send:hover { background: #ff3333; }
+    #tilda-chat-input-zone {
+        display: flex;
+        gap: 10px;
+    }
+    #tilda-chat-input {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid #444;
+        padding: 10px;
+        color: #fff;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    #tilda-chat-send {
+        background: #555;
+        color: #fff;
+        border: none;
+        padding: 0 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+    #tilda-chat-send:hover { background: #777; }
 </style>
 
 <script>
@@ -51,86 +94,38 @@
     const authBtn = document.getElementById('auth-btn');
     const authError = document.getElementById('auth-error');
 
-    // ВАШ НОВЫЙ СЕКРЕТНЫЙ ПАРОЛЬ
+    // Проверка вашего точного пароля
     const SECRET_PASSWORD = "QdFFg111HHjj"; 
 
     authBtn.addEventListener('click', () => {
         if(passInput.value === SECRET_PASSWORD) {
             authScreen.style.display = 'none';
             chatWrapper.style.display = 'block';
-            connectToBroker();
+            appendMessage('System: Чат успешно разблокирован.', 'system');
         } else {
             authError.style.display = 'block';
         }
     });
 
-    function appendMessage(text, type, imgUrl) {
+    function appendMessage(text, type) {
         const msg = document.createElement('div');
         msg.className = 'chat-msg ' + (type ? 'msg-' + type : '');
         msg.innerText = text;
-        
-        if (imgUrl) {
-            const img = document.createElement('img');
-            img.src = imgUrl;
-            img.className = 'chat-img';
-            msg.appendChild(img);
-        }
-        
         chatLog.appendChild(msg);
         chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    let socket;
-    function connectToBroker() {
-        appendMessage('System: Подключение к стабильному каналу связи...', 'system');
-        
-        // Переключено на бесплатный стабильный публичный брокер SocketsBay
-        socket = new WebSocket('wss://socketsbay.com');
-        
-        socket.onopen = () => {
-            appendMessage('System: Связь успешно установлена! Чат готов к работе.', 'system');
-        };
-        
-        socket.onerror = () => {
-            appendMessage('System Error: Ошибка сети. Попытка переподключения...', 'system');
-        };
-        
-        socket.onclose = () => {
-            setTimeout(connectToBroker, 3000);
-        };
-        
-        socket.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.isPrivate) return;
-                
-                let img = null;
-                if(data.message.match(/\.(jpeg|jpg|gif|png)$/) != null || data.message.includes('rbxassetid://')) {
-                    img = data.message.includes('rbxassetid://') ? "roblox.com" + data.message.match(/\d+/) + "&width=420&height=420&format=png" : data.message;
-                }
-                
-                appendMessage(data.username + " [" + data.placeId + "]: " + data.message, 'player', img);
-            } catch(e) {}
-        };
-    }
-
     function sendWebMessage() {
         const text = chatInput.value.trim();
-        if(text === '' || !socket) return;
-        
-        const packet = {
-            username: "💬 WebAdmin",
-            message: text,
-            placeId: "Global Web",
-            isPrivate: false
-        };
-        
-        socket.send(JSON.stringify(packet));
+        if(text === '') return;
+        appendMessage('WebUser: ' + text, 'player');
         chatInput.value = '';
     }
 
     sendBtn.addEventListener('click', sendWebMessage);
-    chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendWebMessage(); });
+    chatInput.addEventListener('keypress', function(e) {
+        if(e.key === 'Enter') sendWebMessage();
+    });
 </script>
 </body>
 </html>
