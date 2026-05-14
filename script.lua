@@ -98,6 +98,7 @@ end
 
 makeDraggable(MainFrame, true)
 
+-- Функция перенесена вверх, чтобы не было ошибки nil
 local function toggleChat()
     isChatVisible = not isChatVisible
     MainFrame.Visible = isChatVisible
@@ -275,6 +276,38 @@ local function addMessage(senderName, messageText, systemColor, assetId)
     end
 end
 
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == toggleKey and not isBinding then
+        toggleChat()
+    end
+end)
+
+BindButton.MouseButton1Click:Connect(function()
+    if isBinding then return end
+    isBinding = true
+    BindButton.Text = "PRESS ANY KEY..."
+    BindButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    playSound(4561001476, 0.5)
+    
+    local connection
+    connection = UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode ~= Enum.KeyCode.Return and input.KeyCode ~= Enum.KeyCode.Escape then
+                toggleKey = input.KeyCode
+                BindButton.Text = "TOGGLE KEY: " .. string.upper(input.KeyCode.Name)
+                saveSettings()
+            else
+                BindButton.Text = "TOGGLE KEY: " .. string.upper(toggleKey.Name)
+            end
+            BindButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            isBinding = false
+            playSound(4561001476, 0.6)
+            connection:Disconnect()
+        end
+    end)
+end)
+
 SettingsButton.MouseButton1Click:Connect(function() 
     SettingsFrame.Visible = not SettingsFrame.Visible 
     playSound(4561001476, 0.5)
@@ -285,18 +318,16 @@ UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- ========================================================
--- ФИКС ИНИЦИАЛИЗАЦИИ ВЕБСОКЕТОВ
--- ========================================================
-local WebSocket = (syn and syn.websocket and syn.websocket.connect) or (WebSocket and WebSocket.connect) or (websocket and websocket.connect)
+-- Проверка наличия глобальной переменной websocket/websocket.connect
+local wsConnect = (syn and syn.websocket and syn.websocket.connect) or (WebSocket and WebSocket.connect) or (websocket and websocket.connect)
 
-if WebSocket then
-    pcall(function()
-        ws = WebSocket(WS_URL)
+if wsConnect then
+    local success, err = pcall(function()
+        ws = wsConnect(WS_URL)
         
         ws.OnMessage:Connect(function(message)
-            local success, data = pcall(function() return HttpService:JSONDecode(message) end)
-            if success and data and data.clanChat then
+            local decodeSuccess, data = pcall(function() return HttpService:JSONDecode(message) end)
+            if decodeSuccess and data and data.clanChat then
                 if data.placeId == PLACE_ID then
                     if data.isPrivate then
                         if data.target == LOCAL_USER then
@@ -314,6 +345,9 @@ if WebSocket then
             end
         end)
     end)
+    if not success then
+        addMessage("System Error:", "Не удалось подключиться к серверу связи.", Color3.fromRGB(255, 85, 85))
+    end
 else
     addMessage("System Error:", "Ваш экзекутор не поддерживает WebSockets!", Color3.fromRGB(255, 85, 85))
 end
@@ -325,6 +359,7 @@ TextBox.FocusLost:Connect(function(enterPressed)
         playSound(4561001476, 0.7) 
         
         local targetPlayer, privateMsg = text:match("^/msg%s+(%S+)%s+(.+)$")
+        
         local packet = {
             clanChat = true,
             username = LOCAL_USER,
