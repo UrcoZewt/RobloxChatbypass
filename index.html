@@ -72,7 +72,7 @@
         font-size: 14px;
     }
     #tilda-chat-send {
-        background: #555;
+        background: #ff5555;
         color: #fff;
         border: none;
         padding: 0 20px;
@@ -81,7 +81,7 @@
         font-weight: bold;
         transition: 0.2s;
     }
-    #tilda-chat-send:hover { background: #777; }
+    #tilda-chat-send:hover { background: #ff3333; }
 </style>
 
 <script>
@@ -94,14 +94,14 @@
     const authBtn = document.getElementById('auth-btn');
     const authError = document.getElementById('auth-error');
 
-    // Проверка вашего точного пароля
+    // Ваш точный пароль
     const SECRET_PASSWORD = "QdFFg111HHjj"; 
 
     authBtn.addEventListener('click', () => {
         if(passInput.value === SECRET_PASSWORD) {
             authScreen.style.display = 'none';
             chatWrapper.style.display = 'block';
-            appendMessage('System: Чат успешно разблокирован.', 'system');
+            appendMessage('System: Чат успешно запущен.', 'system');
         } else {
             authError.style.display = 'block';
         }
