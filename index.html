@@ -26,7 +26,7 @@
     body { background-color: #111; padding: 0; margin: 0; font-family: Arial, sans-serif; }
     #auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
     .auth-box { background: #222; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: #fff; }
-    .auth-box input { background: #111; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 4px; margin-bottom: 15px; width: 80%; }
+    .auth-box input { background: #111; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 4px; margin-bottom: 15px; width: 80%; font-size: 16px; }
     .auth-box button { background: #555; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     
     #tilda-chat-wrapper { max-width: 600px; margin: 50px auto; background: rgba(0, 0, 0, 0.85); border-radius: 8px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -34,7 +34,6 @@
     .chat-msg { margin: 6px 0; line-height: 1.4; font-weight: bold; word-break: break-all; }
     .msg-system { color: #ffd700; }
     .msg-player { color: #ffffff; }
-    .msg-private { color: #d35400; } /* Цвет для ЛС на сайте, если они туда дойдут */
     .chat-img { max-width: 200px; max-height: 200px; display: block; margin-top: 5px; border-radius: 4px; }
     #tilda-chat-input-zone { display: flex; gap: 10px; }
     #tilda-chat-input { flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid #444; padding: 10px; color: #fff; border-radius: 6px; font-size: 14px; }
@@ -52,8 +51,8 @@
     const authBtn = document.getElementById('auth-btn');
     const authError = document.getElementById('auth-error');
 
-    // ПАРОЛЬ ДЛЯ ВХОДА НА САЙТ (Можно изменить на любой)
-    const SECRET_PASSWORD = "1234"; 
+    // ВАШ НОВЫЙ СЕКРЕТНЫЙ ПАРОЛЬ
+    const SECRET_PASSWORD = "QdFFg111HHjj"; 
 
     authBtn.addEventListener('click', () => {
         if(passInput.value === SECRET_PASSWORD) {
@@ -81,28 +80,33 @@
         chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    // Подключение к свободному веб-интерфейсу обмена данными
     let socket;
     function connectToBroker() {
-        appendMessage('System: Подключение к защищенному каналу связи...', 'system');
+        appendMessage('System: Подключение к стабильному каналу связи...', 'system');
         
-        // Используем публичный бесплатный эхо-сервер для P2P связки без создания своего бэкенда
-        socket = new WebSocket('wss://piesocket.com');
+        // Переключено на бесплатный стабильный публичный брокер SocketsBay
+        socket = new WebSocket('wss://socketsbay.com');
         
         socket.onopen = () => {
-            appendMessage('System: Связь установлена. Чат полностью защищен.', 'system');
+            appendMessage('System: Связь успешно установлена! Чат готов к работе.', 'system');
+        };
+        
+        socket.onerror = () => {
+            appendMessage('System Error: Ошибка сети. Попытка переподключения...', 'system');
+        };
+        
+        socket.onclose = () => {
+            setTimeout(connectToBroker, 3000);
         };
         
         socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                // Проверяем, что сообщение не приватное (ЛС на сайте не отображается)
                 if (data.isPrivate) return;
                 
-                // Проверка на картинку в тексте
                 let img = null;
                 if(data.message.match(/\.(jpeg|jpg|gif|png)$/) != null || data.message.includes('rbxassetid://')) {
-                    img = data.message.includes('rbxassetid://') ? "roblox.com" + data.message.match(/\d+/)[0] + "&width=420&height=420&format=png" : data.message;
+                    img = data.message.includes('rbxassetid://') ? "roblox.com" + data.message.match(/\d+/) + "&width=420&height=420&format=png" : data.message;
                 }
                 
                 appendMessage(data.username + " [" + data.placeId + "]: " + data.message, 'player', img);
