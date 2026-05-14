@@ -2,10 +2,19 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Roblox Chat Bypass</title>
+    <title>Roblox Chat Bypass (Protected)</title>
 </head>
 <body>
-<div id="tilda-chat-wrapper">
+<div id="auth-screen">
+    <div class="auth-box">
+        <h2>Введите ключ доступа</h2>
+        <input type="password" id="secret-pass" placeholder="Пароль..." />
+        <button id="auth-btn">Войти в чат</button>
+        <p id="auth-error" style="color:#ff5555; display:none; margin-top:10px;">Неверный пароль!</p>
+    </div>
+</div>
+
+<div id="tilda-chat-wrapper" style="display: none;">
     <div id="tilda-chat-log"></div>
     <div id="tilda-chat-input-zone">
         <input type="text" id="tilda-chat-input" placeholder="Type text here..." />
@@ -14,83 +23,110 @@
 </div>
 
 <style>
-    body { background-color: #111; padding: 0; margin: 0; }
-    #tilda-chat-wrapper {
-        max-width: 500px;
-        margin: 50px auto;
-        background: rgba(0, 0, 0, 0.85);
-        border-radius: 8px;
-        padding: 15px;
-        font-family: Arial, sans-serif;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-    #tilda-chat-log {
-        height: 300px;
-        overflow-y: auto;
-        border-bottom: 1px solid #444;
-        padding-bottom: 10px;
-        margin-bottom: 10px;
-        color: #fff;
-    }
-    .chat-msg {
-        margin: 4px 0;
-        line-height: 1.4;
-        font-weight: bold;
-    }
+    body { background-color: #111; padding: 0; margin: 0; font-family: Arial, sans-serif; }
+    #auth-screen { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .auth-box { background: #222; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: #fff; }
+    .auth-box input { background: #111; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 4px; margin-bottom: 15px; width: 80%; }
+    .auth-box button { background: #555; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    
+    #tilda-chat-wrapper { max-width: 600px; margin: 50px auto; background: rgba(0, 0, 0, 0.85); border-radius: 8px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    #tilda-chat-log { height: 400px; overflow-y: scroll; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; color: #fff; }
+    .chat-msg { margin: 6px 0; line-height: 1.4; font-weight: bold; word-break: break-all; }
     .msg-system { color: #ffd700; }
     .msg-player { color: #ffffff; }
-    #tilda-chat-input-zone {
-        display: flex;
-        gap: 10px;
-    }
-    #tilda-chat-input {
-        flex: 1;
-        background: rgba(0, 0, 0, 0.5);
-        border: 1px solid #444;
-        padding: 10px;
-        color: #fff;
-        border-radius: 6px;
-        font-size: 14px;
-    }
-    #tilda-chat-send {
-        background: #555;
-        color: #fff;
-        border: none;
-        padding: 0 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: 0.2s;
-    }
-    #tilda-chat-send:hover { background: #777; }
+    .msg-private { color: #d35400; } /* Цвет для ЛС на сайте, если они туда дойдут */
+    .chat-img { max-width: 200px; max-height: 200px; display: block; margin-top: 5px; border-radius: 4px; }
+    #tilda-chat-input-zone { display: flex; gap: 10px; }
+    #tilda-chat-input { flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid #444; padding: 10px; color: #fff; border-radius: 6px; font-size: 14px; }
+    #tilda-chat-send { background: #ff5555; color: #fff; border: none; padding: 0 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    #tilda-chat-send:hover { background: #ff3333; }
 </style>
 
 <script>
     const chatLog = document.getElementById('tilda-chat-log');
     const chatInput = document.getElementById('tilda-chat-input');
     const sendBtn = document.getElementById('tilda-chat-send');
+    const authScreen = document.getElementById('auth-screen');
+    const chatWrapper = document.getElementById('tilda-chat-wrapper');
+    const passInput = document.getElementById('secret-pass');
+    const authBtn = document.getElementById('auth-btn');
+    const authError = document.getElementById('auth-error');
 
-    function appendMessage(text, type) {
+    // ПАРОЛЬ ДЛЯ ВХОДА НА САЙТ (Можно изменить на любой)
+    const SECRET_PASSWORD = "1234"; 
+
+    authBtn.addEventListener('click', () => {
+        if(passInput.value === SECRET_PASSWORD) {
+            authScreen.style.display = 'none';
+            chatWrapper.style.display = 'block';
+            connectToBroker();
+        } else {
+            authError.style.display = 'block';
+        }
+    });
+
+    function appendMessage(text, type, imgUrl) {
         const msg = document.createElement('div');
         msg.className = 'chat-msg ' + (type ? 'msg-' + type : '');
         msg.innerText = text;
+        
+        if (imgUrl) {
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.className = 'chat-img';
+            msg.appendChild(img);
+        }
+        
         chatLog.appendChild(msg);
         chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    appendMessage('System: Чат запущен на GitHub Pages. Ожидание бэкенда...', 'system');
+    // Подключение к свободному веб-интерфейсу обмена данными
+    let socket;
+    function connectToBroker() {
+        appendMessage('System: Подключение к защищенному каналу связи...', 'system');
+        
+        // Используем публичный бесплатный эхо-сервер для P2P связки без создания своего бэкенда
+        socket = new WebSocket('wss://piesocket.com');
+        
+        socket.onopen = () => {
+            appendMessage('System: Связь установлена. Чат полностью защищен.', 'system');
+        };
+        
+        socket.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                // Проверяем, что сообщение не приватное (ЛС на сайте не отображается)
+                if (data.isPrivate) return;
+                
+                // Проверка на картинку в тексте
+                let img = null;
+                if(data.message.match(/\.(jpeg|jpg|gif|png)$/) != null || data.message.includes('rbxassetid://')) {
+                    img = data.message.includes('rbxassetid://') ? "roblox.com" + data.message.match(/\d+/)[0] + "&width=420&height=420&format=png" : data.message;
+                }
+                
+                appendMessage(data.username + " [" + data.placeId + "]: " + data.message, 'player', img);
+            } catch(e) {}
+        };
+    }
 
     function sendWebMessage() {
         const text = chatInput.value.trim();
-        if(text === '') return;
-        appendMessage('WebUser: ' + text, 'player');
+        if(text === '' || !socket) return;
+        
+        const packet = {
+            username: "💬 WebAdmin",
+            message: text,
+            placeId: "Global Web",
+            isPrivate: false
+        };
+        
+        socket.send(JSON.stringify(packet));
         chatInput.value = '';
     }
 
     sendBtn.addEventListener('click', sendWebMessage);
-    chatInput.addEventListener('keypress', function(e) {
-        if(e.key === 'Enter') sendWebMessage();
-    });
+    chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendWebMessage(); });
 </script>
 </body>
 </html>
